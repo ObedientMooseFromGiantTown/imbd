@@ -36,13 +36,35 @@ html {
 }
 
 /* TABLE */
-#table-body tr {
+.table {
+  position: relative;
+  width: 100%;
+}
+
+.table tbody tr {
   transition: 0.2s;
 }
 
-#table-body tr:hover {
+.table tbody tr:hover {
   background: rgba(229, 9, 20, 0.15);
   cursor: pointer;
+}
+
+.table {
+  display: none;
+  position: absolute;
+  z-index: 10;
+  min-width: 320px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.main {
+  position: relative;
+}
+
+.grid {
+  width: 100%;
+  height: auto;
 }
 
 /* CHART */

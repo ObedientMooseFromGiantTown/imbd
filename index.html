@@ -40,14 +40,16 @@
     </div>
   </section>
 
-  <!-- Chart -->
+  <!-- Chart / Grid -->
   <section class="mx-5 mt-5">
-    <canvas id="chart" class="w-full bg-white/5 rounded-lg shadow-lg p-5"></canvas>
+    <div class="main relative overflow-hidden rounded-lg border border-white/10 bg-white/5 p-3 shadow-lg">
+      <svg class="grid w-full" role="img" aria-label="IMDb ratings treemap"></svg>
+    </div>
   </section>
 
   <!-- Table -->
-  <section class="mx-5 mt-5 bg-white/5 rounded-lg shadow-lg overflow-hidden">
-    <table class="w-full text-left divide-y divide-gray-700">
+  <section class="mx-5 mt-5">
+    <table class="table text-left divide-y divide-gray-700 bg-white/5 rounded-lg shadow-lg">
       <thead class="bg-red-900/30">
         <tr>
           <th class="p-3 text-gray-300 font-semibold">Title</th>
@@ -55,12 +57,12 @@
           <th class="p-3 text-gray-300 font-semibold">Rating</th>
         </tr>
       </thead>
-      <tbody id="table-body" class="divide-y divide-gray-800"></tbody>
+      <tbody class="divide-y divide-gray-800"></tbody>
     </table>
   </section>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- D3.js v3 for the original visualization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js" integrity="sha512-DJWcZk0YpE5iYhJGfPIpnaUpaVDQaROj63nEWPrSzp1y30SACmQkD8nLvyE7n7sdf19po7cXbEJT1I0J30k3kQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- Your logic -->
   <script src="script.js" type="module"></script>

@@ -6,7 +6,7 @@
 # ///
 
 '''
-Fetch IMDb data and save movies, ratings & votes to movies.csv. 
+Fetch IMDb data and save movies, ratings & votes to movies.csv.
 Update metadata in info.json
 '''
 
