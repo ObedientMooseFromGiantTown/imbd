@@ -1,295 +1,373 @@
-/* globals d3 */
+// script.js
+// IMDb Movie Explorer – D3 heatmap (rating vs votes) with filters + brushing
 
-(function hoverzoom() {
-  const svg = d3.select(".treemap");
-  d3.selectAll("image")
-    .on("mouseenter", function () {
-      const node = d3.select(this);
-      node.attr({
-        "data-w": node.attr("width"),
-        "data-h": node.attr("height"),
-      });
-      node.attr({ width: 200, height: 300 });
-      svg.append(function () {
-        return node.remove().node();
-      });
+const DATA_URL = "data.csv"; // make sure this file is in the repo root
+
+// DOM refs
+const svg = d3.select("#heatmap");
+const tooltip = d3.select("#tooltip");
+const genreSelect = document.getElementById("Genre");
+const typeSelect = document.getElementById("Type");
+const yearSelect = document.getElementById("Year");
+const titleInput = document.getElementById("Title");
+const tableBody = document.getElementById("table-body");
+const selectionCountEl = document.getElementById("selection-count");
+const updatedEl = document.getElementById("updated");
+
+// Layout
+const margin = { top: 30, right: 20, bottom: 50, left: 55 };
+let width = 960;
+let height = +svg.attr("height");
+let innerWidth = width - margin.left - margin.right;
+let innerHeight = height - margin.top - margin.bottom;
+
+svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+const g = svg
+  .append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+const xAxisG = g.append("g").attr("transform", `translate(0,${innerHeight})`);
+const yAxisG = g.append("g");
+const brushG = g.append("g").attr("class", "brush");
+
+const xLabel = g
+  .append("text")
+  .attr("x", innerWidth / 2)
+  .attr("y", innerHeight + 40)
+  .attr("text-anchor", "middle")
+  .attr("fill", "#e5e5e5")
+  .attr("font-size", 12)
+  .text("Popularity (IMDb votes, log scale)");
+
+const yLabel = g
+  .append("text")
+  .attr("x", -innerHeight / 2)
+  .attr("y", -40)
+  .attr("transform", "rotate(-90)")
+  .attr("text-anchor", "middle")
+  .attr("fill", "#e5e5e5")
+  .attr("font-size", 12)
+  .text("Rating (1 – 10)");
+
+let allMovies = [];
+let filteredMovies = [];
+let bins = [];
+let xScale, yScale, xBins, yBins, colorScale;
+
+const NUM_X_BINS = 30;
+const NUM_Y_BINS = 18;
+
+// Load and prep data
+d3.csv(DATA_URL, d3.autoType).then((raw) => {
+  allMovies = raw
+    .map((d) => {
+      const title = d.Title || d.primaryTitle || d.title || "";
+      const year = d.Year || d.startYear || null;
+      const rating = Number(d.imdbRating ?? d.Rating ?? d.imdb_rating);
+      const votes = Number(d.imdbVotes ?? d.Votes ?? d.imdb_votes);
+      const genreField = d.Primary_Genre || d.PrimaryGenre || d.Genre || d.genres || "";
+      const typeField = d.Type || d.titleType || d.TypeName || "";
+      const imdbID = d.imdbID || d.tconst || "";
+
+      if (!title || !rating || !votes) return null;
+
+      return {
+        title,
+        year,
+        rating,
+        votes,
+        genre: (genreField || "").split(",")[0].trim() || "",
+        genreRaw: genreField,
+        type: typeField,
+        imdbID,
+      };
     })
-    .on("mouseleave", function () {
-      const node = d3.select(this);
-      node.attr({
-        width: node.attr("data-w"),
-        height: node.attr("data-h"),
-      });
-    });
-})();
+    .filter(Boolean);
 
-var raw_data,
-  width = 1600,
-  height = 800,
-  xCells = 100,
-  yCells = 50,
-  grid = d3
-    .select(".grid")
-    .attr("width", width + 30)
-    .attr("height", height + 30)
-    .attr("viewBox", `0 0 ${width + 30} ${height + 30}`)
-    .attr("preserveAspectRatio", "xMidYMin"),
-  xscale = d3.scale.linear().range([0, width]).domain([0, xCells]),
-  yscale = d3.scale.linear().range([0, height]).domain([0, yCells]),
-  ratingscale = d3.scale.linear().domain([1, 10]).range([yCells, 0]),
-  votescale = d3.scale.log().domain([10000, 3000000]).range([0, xCells]),
-  genres =
-    " Action Adventure Animation Biography Comedy Crime Documentary Drama Family Fantasy History Horror Music Musical Mystery Romance Sci-Fi Sport Thriller War Western".split(
-      / /
-    ),
-  types = " movie series".split(/ /),
-  decades = " 2020s 2010s 2000s 1990s 1980s 1970s 1960s 1950s 1940s 1930s".split(/ /);
-
-const info = await fetch("info.json").then((r) => r.json());
-document.querySelector("#updated").setAttribute("datetime", info.updated);
-document.querySelector("#updated").textContent = d3.time.format("%d %b %Y")(new Date(info.updated));
-
-d3.csv("movies.csv", function (data) {
-  // Add filters
-  raw_data = data;
-  d3.select("#Genre").selectAll("option").data(genres).enter().append("option").text(String);
-  d3.select("#Type").selectAll("option").data(types).enter().append("option").text(String);
-  d3.select("#Year")
-    .selectAll("option")
-    .data(decades)
-    .enter()
-    .append("option")
-    .text(String)
-    .property("value", (d) => (d ? "^" + d.slice(0, 3) : ""));
-
-  function set_hash() {
-    var genre = d3.select("#Genre").property("value"),
-      type = d3.select("#Type").property("value"),
-      decade = d3.select("#Year").property("value"),
-      title = d3.select("#Title").property("value").replace(/^ */, "").replace(/ *$/, ""),
-      hashes = [];
-    if (genre) hashes.push("Genre=" + encodeURIComponent(genre));
-    if (type) hashes.push("Type=" + encodeURIComponent(type));
-    if (decade) hashes.push("Year=" + encodeURIComponent(decade));
-    if (title) hashes.push("Title=" + encodeURIComponent(title));
-    window.location.hash = hashes.join("&");
-  }
-
-  d3.selectAll("#Genre, #Type, #Year").on("change", set_hash);
-  d3.selectAll("#Title").on("keyup", set_hash);
-  d3.select(window).on("hashchange", draw).on("hashchange")();
-
-  // Add legend
-  var ratingformat = d3.format(".1f");
-  var rating = grid
-    .selectAll(".rating")
-    .data(d3.range(2, 10))
-    .enter()
-    .append("g")
-    .classed("rating", true)
-    .attr("transform", (d) => `translate(0,${yscale(ratingscale(d))})`);
-  rating
-    .append("text")
-    .attr("x", width + 25)
-    .attr("text-anchor", "end")
-    .attr("dy", ".35em")
-    .text(ratingformat);
-  rating.append("path").attr("d", `M0,0h${width}`);
-
-  var voteformat = d3.format(".0f");
-  var vote = grid
-    .selectAll(".vote")
-    .data([10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000])
-    .enter()
-    .append("g")
-    .classed("vote", true)
-    .attr("transform", (d) => `translate(${xscale(votescale(d))},0)`);
-  vote
-    .append("text")
-    .attr("y", 0)
-    .attr("dy", "1em")
-    .attr("text-anchor", (d) => (d == 10000 ? "start" : "middle"))
-    .text((d) => voteformat(d / 1000) + "K");
-  vote.append("path").attr("d", `M0,0v${height}`);
-
-  grid
-    .append("text")
-    .text("Rating")
-    .attr({ x: width + 25, dy: "2.5em", "text-anchor": "end" });
-  grid.append("text").text("Votes").attr({ x: width, y: 0, dy: "1em", "text-anchor": "end" });
-});
-
-function draw(filter) {
-  var data = raw_data;
-
-  if (typeof filter == "function") {
-    data = data.filter(filter);
-  } else {
-    var hashes = window.location.hash.replace(/^#/, "").split("&");
-    hashes.forEach(function (hash) {
-      var parts = hash.split(/=/),
-        key = parts[0],
-        value = decodeURIComponent(parts.slice(1).join("="));
-      if (key && value) {
-        d3.select("#" + key).property("value", value);
-        data = data.filter((d) => d[key].match(new RegExp(value, "i")));
-      }
-    });
-  }
-
-  grid.selectAll(".cell, .brush").remove();
-  var table = d3.select(".table");
-
-  var i = data.length;
-  if (i == 0) {
+  if (!allMovies.length) {
+    console.error("No usable movies found in CSV");
     return;
   }
-  var row,
-    cell = {},
-    max = 0;
-  while (i--) {
-    row = data[i];
-    row["Votes"] = +row["Votes"];
-    var y = Math.round(ratingscale(row["Rating"])),
-      x = Math.round(votescale(row["Votes"])),
-      key = x + "," + y,
-      list = cell[key] || (cell[key] = []);
-    list.push(row);
-    var len = list.length;
-    if (len > max) {
-      max = len;
-    }
+
+  // Set "last updated" timestamp (approx based on now)
+  const now = new Date();
+  updatedEl.textContent = `Updated ${now.toISOString().slice(0, 10)}`;
+
+  setupFilters();
+  applyFiltersAndRender();
+});
+
+// Set up dropdown options
+function setupFilters() {
+  const genres = new Set();
+  const types = new Set();
+  const years = new Set();
+
+  allMovies.forEach((d) => {
+    if (d.genre) genres.add(d.genre);
+    if (d.type) types.add(d.type);
+    if (d.year) years.add(+d.year);
+  });
+
+  [...genres].sort().forEach((g) => {
+    const opt = document.createElement("option");
+    opt.value = g;
+    opt.textContent = g;
+    genreSelect.appendChild(opt);
+  });
+
+  [...types].sort().forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    typeSelect.appendChild(opt);
+  });
+
+  [...years]
+    .sort((a, b) => a - b)
+    .forEach((y) => {
+      const opt = document.createElement("option");
+      opt.value = y;
+      opt.textContent = y;
+      yearSelect.appendChild(opt);
+    });
+
+  genreSelect.addEventListener("change", onFilterChange);
+  typeSelect.addEventListener("change", onFilterChange);
+  yearSelect.addEventListener("change", onFilterChange);
+  titleInput.addEventListener("input", debounce(onFilterChange, 200));
+}
+
+function onFilterChange() {
+  applyFiltersAndRender();
+}
+
+function applyFiltersAndRender() {
+  const genre = genreSelect.value;
+  const type = typeSelect.value;
+  const year = yearSelect.value ? +yearSelect.value : null;
+  const titleQuery = titleInput.value.trim().toLowerCase();
+
+  filteredMovies = allMovies.filter((d) => {
+    if (genre && d.genre !== genre) return false;
+    if (type && d.type !== type) return false;
+    if (year && d.year !== year) return false;
+    if (titleQuery && !d.title.toLowerCase().includes(titleQuery)) return false;
+    return true;
+  });
+
+  buildScalesAndBins();
+  drawHeatmap();
+  updateSelection(filteredMovies.slice(0, 50)); // default selection: first 50
+}
+
+function buildScalesAndBins() {
+  if (!filteredMovies.length) {
+    bins = [];
+    return;
   }
 
-  function count(key, genre) {
-    if (typeof genre == "undefined") {
-      return cell[key].length;
-    } else {
-      var count = 0,
-        list = cell[key],
-        i = list.length;
-      while (--i) {
-        if (list[i].Genre.match(genre)) {
-          count += 1;
-        }
-      }
-      return count;
-    }
-  }
+  const minVotes = d3.min(filteredMovies, (d) => d.votes);
+  const maxVotes = d3.max(filteredMovies, (d) => d.votes);
+  const minLog = Math.log10(Math.max(1, minVotes));
+  const maxLog = Math.log10(maxVotes);
 
-  var opacity = d3.scale.pow().exponent(0.8).domain([0, max]).range([0.05, 1]).clamp(true);
-  var cells = grid
-    .selectAll(".cell")
-    .data(
-      d3.keys(cell).map(function (d) {
-        var xy = d.split(",");
-        return { x: +xy[0], y: +xy[1], key: d };
-      })
-    )
+  xScale = d3
+    .scaleLog()
+    .domain([Math.pow(10, Math.floor(minLog)), Math.pow(10, Math.ceil(maxLog))])
+    .range([0, innerWidth])
+    .nice();
+
+  yScale = d3.scaleLinear().domain([1, 10]).range([innerHeight, 0]).nice();
+
+  xBins = d3
+    .range(NUM_X_BINS)
+    .map((i) => innerWidth * (i / NUM_X_BINS));
+  yBins = d3
+    .range(NUM_Y_BINS)
+    .map((j) => innerHeight * (j / NUM_Y_BINS));
+
+  const binMap = new Map();
+
+  filteredMovies.forEach((d) => {
+    const x = xScale(d.votes);
+    const y = yScale(d.rating);
+
+    const i = Math.max(
+      0,
+      Math.min(
+        NUM_X_BINS - 1,
+        Math.floor((x / innerWidth) * NUM_X_BINS)
+      )
+    );
+    const j = Math.max(
+      0,
+      Math.min(
+        NUM_Y_BINS - 1,
+        Math.floor((y / innerHeight) * NUM_Y_BINS)
+      )
+    );
+
+    const key = `${i}-${j}`;
+    if (!binMap.has(key)) {
+      binMap.set(key, {
+        i,
+        j,
+        movies: [],
+      });
+    }
+    binMap.get(key).movies.push(d);
+  });
+
+  bins = [...binMap.values()];
+  const maxCount = d3.max(bins, (b) => b.movies.length);
+
+  colorScale = d3
+    .scaleSequential(d3.interpolateReds)
+    .domain([0, maxCount || 1]);
+}
+
+function drawHeatmap() {
+  // Axes
+  const xAxis = d3
+    .axisBottom(xScale)
+    .ticks(10, "~s")
+    .tickSizeOuter(0);
+
+  const yAxis = d3.axisLeft(yScale).ticks(10).tickSizeOuter(0);
+
+  xAxisG.call(xAxis);
+  yAxisG.call(yAxis);
+
+  xAxisG.selectAll("text").attr("fill", "#e5e5e5").attr("font-size", 10);
+  yAxisG.selectAll("text").attr("fill", "#e5e5e5").attr("font-size", 10);
+  xAxisG.selectAll("path,line").attr("stroke", "#4b5563");
+  yAxisG.selectAll("path,line").attr("stroke", "#4b5563");
+
+  // Join
+  const cellWidth = innerWidth / NUM_X_BINS;
+  const cellHeight = innerHeight / NUM_Y_BINS;
+
+  const cells = g.selectAll(".cell").data(bins, (d) => `${d.i}-${d.j}`);
+
+  cells
     .enter()
     .append("rect")
-    .classed("cell", true)
-    .attr("x", (d) => (width / xCells) * d.x)
-    .attr("y", (d) => (height / yCells) * d.y)
-    .attr("fill-opacity", (d) => opacity(count(d.key)))
-    .attr("width", width / xCells)
-    .attr("height", height / yCells);
+    .attr("class", "cell")
+    .attr("x", (d) => d.i * cellWidth)
+    .attr("y", (d) => d.j * cellHeight)
+    .attr("width", cellWidth + 1)
+    .attr("height", cellHeight + 1)
+    .attr("fill", (d) => colorScale(d.movies.length))
+    .on("mousemove", (event, d) => showTooltip(event, d))
+    .on("mouseout", () => hideTooltip())
+    .on("click", (event, d) => {
+      updateSelection(d.movies);
+    })
+    .merge(cells)
+    .attr("fill", (d) => colorScale(d.movies.length));
 
-  function show_table(data) {
-    table.selectAll("tbody *").remove();
-    if (!data || data.length == 0) {
-      table.style("display", "none");
-      return;
-    } else {
-      table.style("display", "block");
-    }
-    var MAX = 30;
-    var rows = table
-      .select("tbody")
-      .selectAll(".movie")
-      .data(data.slice(0, MAX))
-      .enter()
-      .append("tr")
-      .classed("movie", true);
-    rows
-      .append("td")
-      .append("a")
-      .attr("href", (d) => `http://www.imdb.com/title/${d.ID}/`)
-      .attr("target", "_blank")
-      .text((d) => d.Title);
-    rows.append("td").text((d) => comma(d.Votes));
-    rows.append("td").text((d) => d.Rating);
-    if (data.length > MAX) {
-      table
-        .select("tbody")
-        .append("tr")
-        .append("td")
-        .text("... " + (data.length - MAX) + " more");
-    }
-    var brush = d3.select(".brush .extent").node().getBoundingClientRect(),
-      gridrect = grid.node().getBoundingClientRect(),
-      left,
-      top;
-    if (d3.event.type == "mousemove") {
-      var pos = d3.mouse(mainnode);
-      left = pos[0] - 100;
-      top = pos[1] + 25;
-    } else {
-      left = brush.left - gridrect.left;
-      top = brush.top + brush.height + 10;
-    }
-    table.style({
-      left: left + "px",
-      top: top + "px",
-    });
+  cells.exit().remove();
+
+  // Brush
+  const brush = d3
+    .brush()
+    .extent([
+      [0, 0],
+      [innerWidth, innerHeight],
+    ])
+    .on("end", brushed);
+
+  brushG.call(brush);
+}
+
+// Brush handler: select all movies whose (votes, rating) fall inside rectangle
+function brushed({ selection }) {
+  if (!selection) {
+    updateSelection([]);
+    return;
   }
+  const [[x0, y0], [x1, y1]] = selection;
 
-  var comma = d3.format(",d"),
-    mainnode = d3.select(".main").node(),
-    brushcount = 0;
-  grid
-    .append("g")
-    .classed("brush", true)
-    .call(
-      d3.svg
-        .brush()
-        .x(xscale)
-        .y(xscale)
-        .on("brush", function () {
-          var extent = d3.event.target.extent();
-          brushcount = 0;
-          cells.classed("active", function (d) {
-            d.active = extent[0][0] <= d.x + 1 && d.x <= extent[1][0] && extent[0][1] <= d.y + 1 && d.y <= extent[1][1];
-            if (d.active) {
-              brushcount++;
-            }
-            return d.active;
-          });
-        })
-        .on("brushend", function () {
-          var nodes = cells.filter((d) => d.active).data();
-          var groups = nodes.map((node) => cell[node.key]);
-          var data = [];
-          data = data.concat.apply(data, groups);
-          data.sort((a, b) => (a.Votes < b.Votes ? +1 : a.Votes > b.Votes ? -1 : 0));
-          show_table(data);
-        })
-    );
-  var lastkey;
-  grid.on("mousemove", function () {
-    if (brushcount > 0) {
-      return;
-    }
-    var gridpos = d3.mouse(d3.select(".grid").node()),
-      x = Math.floor(xscale.invert(gridpos[0])),
-      y = Math.floor(xscale.invert(gridpos[1])),
-      key = x + "," + y;
-    if (key == lastkey) return;
-    lastkey = key;
-
-    cells.classed("active", (d) => x == d.x && y == d.y);
-    var data = cell[key];
-    if (data) data.sort((a, b) => (a.Votes < b.Votes ? +1 : a.Votes > b.Votes ? -1 : 0));
-    show_table(data);
+  const selected = filteredMovies.filter((d) => {
+    const x = xScale(d.votes);
+    const y = yScale(d.rating);
+    return x >= x0 && x <= x1 && y >= y0 && y <= y1;
   });
+
+  updateSelection(selected);
+}
+
+// Tooltip
+function showTooltip(event, bin) {
+  const [x, y] = d3.pointer(event);
+  const movies = bin.movies.slice(0, 6); // show first few
+
+  tooltip
+    .classed("hidden", false)
+    .style("left", event.clientX + 12 + "px")
+    .style("top", event.clientY + 12 + "px");
+
+  tooltip.html("");
+  tooltip.append("div").attr("class", "tooltip-title").text(
+    `${movies.length} movie${movies.length !== 1 ? "s" : ""}`
+  );
+
+  movies.forEach((m) => {
+    tooltip
+      .append("div")
+      .attr("class", "tooltip-movie")
+      .text(
+        `${m.title} (${m.year || "?"}) · ${m.rating.toFixed(
+          1
+        )} ★ · ${m.votes.toLocaleString()} votes`
+      );
+  });
+}
+
+function hideTooltip() {
+  tooltip.classed("hidden", true);
+}
+
+// Update table with selected movies
+function updateSelection(movies) {
+  const sorted = [...movies].sort((a, b) => b.rating - a.rating);
+  tableBody.innerHTML = "";
+
+  sorted.slice(0, 200).forEach((m) => {
+    const tr = document.createElement("tr");
+
+    const imdbUrl = m.imdbID
+      ? `https://www.imdb.com/title/${m.imdbID}/`
+      : `https://www.imdb.com/find?q=${encodeURIComponent(m.title)}`;
+
+    tr.innerHTML = `
+      <td class="p-3 whitespace-nowrap">
+        <a href="${imdbUrl}" target="_blank" rel="noopener noreferrer">
+          ${m.title}
+        </a>
+      </td>
+      <td class="p-3">${m.year || ""}</td>
+      <td class="p-3">${m.genre || ""}</td>
+      <td class="p-3">${m.type || ""}</td>
+      <td class="p-3">${m.rating?.toFixed(1) ?? ""}</td>
+      <td class="p-3">${m.votes?.toLocaleString() ?? ""}</td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  const count = movies.length;
+  selectionCountEl.textContent = count
+    ? `${count.toLocaleString()} titles in selection`
+    : "No selection (showing sample only)";
+}
+
+// Small debounce helper
+function debounce(fn, delay = 200) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(null, args), delay);
+  };
 }
