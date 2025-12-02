@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IMDb Explorer</title>
+  <title>IMDb Movie Explorer</title>
 
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS (utility classes) -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- D3 for heatmap & brushing -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -14,15 +17,18 @@
 <body class="bg-black text-gray-200">
 
   <!-- Header -->
-  <header class="p-5 border-b border-red-700 bg-gradient-to-r from-black via-red-900/30 to-black shadow-lg">
+  <header class="p-5 bg-gradient-to-r from-black via-red-900/40 to-black shadow-lg border-b border-red-800/60">
     <div class="flex justify-between items-center">
-      <h1 class="text-3xl font-extrabold tracking-widest text-red-600">IMDb Explorer</h1>
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-widest text-red-600">IMDb Movie Explorer</h1>
+        <p class="text-sm text-gray-400 mt-1">Rating vs Popularity · Brush, filter & discover your next movie</p>
+      </div>
       <span id="updated" class="text-sm text-gray-400"></span>
     </div>
   </header>
 
   <!-- Filters -->
-  <section class="backdrop-blur bg-white/5 border border-white/10 p-5 mt-5 mx-5 rounded-lg shadow-lg">
+  <section class="mx-5 mt-5 backdrop-blur bg-white/5 border border-white/10 p-5 rounded-xl shadow-xl">
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <select id="Genre" class="filter-select">
         <option value="">All Genres</option>
@@ -36,34 +42,48 @@
         <option value="">All Years</option>
       </select>
 
-      <input id="Title" type="search" placeholder="Search title..." class="filter-input" />
+      <input id="Title" type="search" placeholder="Search title..."
+             class="filter-input" />
     </div>
   </section>
 
-  <!-- Chart -->
+  <!-- Heatmap -->
   <section class="mx-5 mt-5">
-    <canvas id="chart" class="w-full bg-white/5 rounded-lg shadow-lg p-5"></canvas>
+    <div class="bg-white/5 rounded-xl shadow-xl border border-white/10 p-4">
+      <svg id="heatmap" class="w-full" height="480"></svg>
+      <p class="text-xs text-gray-400 mt-2">
+        X: Popularity (IMDb votes, log scale) · Y: Rating (1–10).
+        Use mouse drag to select an area. Hover cells for quick details.
+      </p>
+    </div>
   </section>
 
-  <!-- Table -->
-  <section class="mx-5 mt-5 bg-white/5 rounded-lg shadow-lg overflow-hidden">
-    <table class="w-full text-left divide-y divide-gray-700">
-      <thead class="bg-red-900/30">
-        <tr>
-          <th class="p-3 text-gray-300 font-semibold">Title</th>
-          <th class="p-3 text-gray-300 font-semibold">Votes</th>
-          <th class="p-3 text-gray-300 font-semibold">Rating</th>
-        </tr>
-      </thead>
-      <tbody id="table-body" class="divide-y divide-gray-800"></tbody>
-    </table>
+  <!-- Selected Movies Table -->
+  <section class="mx-5 my-6 bg-white/5 rounded-xl shadow-xl border border-white/10 overflow-hidden">
+    <div class="flex justify-between items-center px-4 py-3 bg-red-900/40">
+      <h2 class="font-semibold text-gray-100">Selected Movies</h2>
+      <span id="selection-count" class="text-xs text-gray-300"></span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left divide-y divide-gray-700 text-sm">
+        <thead class="bg-black/60">
+          <tr>
+            <th class="p-3 text-gray-300 font-semibold">Title</th>
+            <th class="p-3 text-gray-300 font-semibold">Year</th>
+            <th class="p-3 text-gray-300 font-semibold">Genre</th>
+            <th class="p-3 text-gray-300 font-semibold">Type</th>
+            <th class="p-3 text-gray-300 font-semibold">Rating</th>
+            <th class="p-3 text-gray-300 font-semibold">Votes</th>
+          </tr>
+        </thead>
+        <tbody id="table-body" class="divide-y divide-gray-800"></tbody>
+      </table>
+    </div>
   </section>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Tooltip -->
+  <div id="tooltip" class="tooltip hidden"></div>
 
-  <!-- Your logic -->
   <script src="script.js" type="module"></script>
-
 </body>
 </html>
