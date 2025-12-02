@@ -1,32 +1,35 @@
-/* GLOBAL COLORS — Netflix Inspired */
 :root {
   --red: #e50914;
   --red-dark: #b20710;
   --bg-dark: #000000;
-  --bg-card: rgba(255, 255, 255, 0.05);
-  --bg-card-hover: rgba(255, 255, 255, 0.1);
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-card-hover: rgba(255, 255, 255, 0.14);
   --text-light: #e5e5e5;
-  --text-muted: #888;
+  --text-muted: #9ca3af;
 }
 
-/* SMOOTH SCROLLING */
+/* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
 
-/* FILTERS */
+/* Filters */
 .filter-select,
 .filter-input {
   background: var(--bg-card);
   color: var(--text-light);
   border: 1px solid var(--red-dark);
-  padding: 0.6rem;
-  border-radius: 0.4rem;
-  transition: 0.2s;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: 0.15s;
 }
 
 .filter-select:hover,
-.filter-input:hover {
+.filter-input:hover,
+.filter-select:focus,
+.filter-input:focus {
   background: var(--bg-card-hover);
   border-color: var(--red);
 }
@@ -35,34 +38,65 @@ html {
   color: var(--text-muted);
 }
 
-/* TABLE */
+/* Heatmap cells */
+.cell {
+  stroke: rgba(0, 0, 0, 0.4);
+  stroke-width: 0.5;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.cell:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+/* Brush */
+.brush .selection {
+  stroke: var(--red);
+  stroke-width: 1;
+  fill: rgba(229, 9, 20, 0.18);
+}
+
+/* Table rows */
 #table-body tr {
-  transition: 0.2s;
+  transition: background 0.15s;
 }
 
 #table-body tr:hover {
-  background: rgba(229, 9, 20, 0.15);
-  cursor: pointer;
+  background: rgba(229, 9, 20, 0.22);
 }
 
-/* CHART */
-#chart {
-  background: var(--bg-card);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  max-width: 320px;
+  padding: 0.6rem 0.8rem;
+  background: rgba(0, 0, 0, 0.9);
+  color: #f9fafb;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  pointer-events: none;
+  z-index: 50;
+  border: 1px solid rgba(229, 9, 20, 0.6);
 }
 
-/* HEADER */
-header {
-  user-select: none;
-  letter-spacing: 1px;
-  border-bottom: 1px solid rgba(229, 9, 20, 0.3);
+.tooltip-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
 }
 
-/* LINKS */
+.tooltip-movie {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* Links (for IMDb) */
 a {
   color: var(--red);
-  text-decoration: none;
 }
+
 a:hover {
   text-decoration: underline;
 }
