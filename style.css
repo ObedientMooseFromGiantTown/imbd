@@ -1,0 +1,68 @@
+/* GLOBAL COLORS — Netflix Inspired */
+:root {
+  --red: #e50914;
+  --red-dark: #b20710;
+  --bg-dark: #000000;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-card-hover: rgba(255, 255, 255, 0.1);
+  --text-light: #e5e5e5;
+  --text-muted: #888;
+}
+
+/* SMOOTH SCROLLING */
+html {
+  scroll-behavior: smooth;
+}
+
+/* FILTERS */
+.filter-select,
+.filter-input {
+  background: var(--bg-card);
+  color: var(--text-light);
+  border: 1px solid var(--red-dark);
+  padding: 0.6rem;
+  border-radius: 0.4rem;
+  transition: 0.2s;
+}
+
+.filter-select:hover,
+.filter-input:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--red);
+}
+
+.filter-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* TABLE */
+#table-body tr {
+  transition: 0.2s;
+}
+
+#table-body tr:hover {
+  background: rgba(229, 9, 20, 0.15);
+  cursor: pointer;
+}
+
+/* CHART */
+#chart {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* HEADER */
+header {
+  user-select: none;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(229, 9, 20, 0.3);
+}
+
+/* LINKS */
+a {
+  color: var(--red);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
